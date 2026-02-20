@@ -1,197 +1,164 @@
-/**
- * Creatures Renderer - Handles PixiJS
- */
-import { Application, Assets, Sprite, Container, Graphics, AnimatedSprite, Texture, Rectangle } from 'pixi.js';
+import { Application, Assets, Sprite, Container, Graphics, AnimatedSprite, Texture, Rectangle, BaseTexture } from 'pixi.js';
 
 export class GameRenderer {
-    constructor(containerId, width, height) {
+    constructor(containerId, worldWidth, worldHeight) {
         this.container = document.getElementById(containerId);
-        this.worldWidth = width;
-        this.worldHeight = height;
-        this.sprites = new Map(); // Map entity object -> Pixi Sprite
+        this.worldWidth = worldWidth;
+        this.worldHeight = worldHeight;
+        this.sprites = new Map();
         this.textures = {};
-
-        // PixiJS v7 Application
-        this.app = new Application({ 
-            background: '#1099bb', 
-            resizeTo: this.container,
-            resolution: window.devicePixelRatio || 1,
-            autoDensity: true
-        });
         
-        // Enable z-sorting
-        this.app.stage.sortableChildren = true;
+        // Clean init
+        this.app = new Application({
+            background: '#1a1a1a',
+            resizeTo: window,
+            autoDensity: true,
+            resolution: window.devicePixelRatio || 1
+        });
+        this.container.appendChild(this.app.view);
+        
+        // Layers
+        this.stage = this.app.stage;
+        this.stage.sortableChildren = true;
+        
+        this.bgLayer = new Container(); this.bgLayer.zIndex = 0;
+        this.gameLayer = new Container(); this.gameLayer.zIndex = 10;
+        this.uiLayer = new Container(); this.uiLayer.zIndex = 20;
+        
+        this.stage.addChild(this.bgLayer, this.gameLayer, this.uiLayer);
+        
+        this.platformGfx = new Graphics();
+        this.gameLayer.addChild(this.platformGfx);
     }
 
     async init() {
-        this.container.appendChild(this.app.view);
-        
-        // Load Assets
-        await this.loadAssets();
-        
-        // Setup Layers
-        this.rootContainer = new Container();
-        this.app.stage.addChild(this.rootContainer);
+        // Load
+        const bgTex = await Assets.load('world_bg.png');
+        const nornTex = await Assets.load('norn_sprite.png');
+        const itemsTex = await Assets.load('items.png');
 
-        this.bgLayer = new Container();
-        this.gameLayer = new Container();
-        this.uiLayer = new Container();
+        // Process Textures
+        // Norn: Assuming 4 frames walk (top row?), others elsewhere. 
+        // Based on previous code: 4x2 grid. 
+        // Walk: 0,0 - 1,0 - 2,0 - 3,0. Eat: 1,1. Sleep: 2,1. Idle: 0,1.
+        const nw = nornTex.width / 4;
+        const nh = nornTex.height / 2;
         
-        // Explicit Z-Index to prevent hiding bugs
-        this.bgLayer.zIndex = 0;
-        this.gameLayer.zIndex = 10;
-        this.uiLayer.zIndex = 20;
-        
-        this.rootContainer.sortableChildren = true;
-        this.rootContainer.addChild(this.bgLayer);
-        this.rootContainer.addChild(this.gameLayer);
-        this.rootContainer.addChild(this.uiLayer);
-
-        // Setup Background
-        const bg = new Sprite(this.textures.bg);
-        // We will scale this in render/resize
-        this.bgLayer.addChild(bg);
-        this.bgSprite = bg;
-        
-        // Create Platform Graphics
-        this.platformGraphics = new Graphics();
-        this.gameLayer.addChild(this.platformGraphics);
-    }
-
-    async loadAssets() {
-        // Load textures
-        this.textures.bg = await Assets.load('world_bg.png');
-        const nornSheet = await Assets.load('norn_sprite.png');
-        const itemsSheet = await Assets.load('items.png');
-
-        // Create Norn Animations manually
-        // Pixi v7 Texture handling
-        const w = nornSheet.width / 4;
-        const h = nornSheet.height / 2;
-        const nBase = nornSheet.baseTexture;
+        const crop = (base, x, y, w, h) => new Texture(base, new Rectangle(x*w, y*h, w, h));
         
         this.textures.norn = {
-            idle: [new Texture(nBase, new Rectangle(0, h, w, h))],
+            idle: [crop(nornTex.baseTexture, 0, 1, nw, nh)],
             walk: [
-                new Texture(nBase, new Rectangle(0, 0, w, h)),
-                new Texture(nBase, new Rectangle(w, 0, w, h)),
-                new Texture(nBase, new Rectangle(w*2, 0, w, h)),
-                new Texture(nBase, new Rectangle(w*3, 0, w, h))
+                crop(nornTex.baseTexture, 0, 0, nw, nh),
+                crop(nornTex.baseTexture, 1, 0, nw, nh),
+                crop(nornTex.baseTexture, 2, 0, nw, nh),
+                crop(nornTex.baseTexture, 3, 0, nw, nh)
             ],
-            eat: [new Texture(nBase, new Rectangle(w, h, w, h))],
-            sleep: [new Texture(nBase, new Rectangle(w*2, h, w, h))]
+            eat: [crop(nornTex.baseTexture, 1, 1, nw, nh)],
+            sleep: [crop(nornTex.baseTexture, 2, 1, nw, nh)],
+            jump: [crop(nornTex.baseTexture, 3, 1, nw, nh)]
         };
 
-        // Items
-        const iw = itemsSheet.width / 2;
-        const ih = itemsSheet.height / 2;
-        const iBase = itemsSheet.baseTexture;
-
+        // Items: 2x2 grid
+        const iw = itemsTex.width / 2;
+        const ih = itemsTex.height / 2;
         this.textures.items = {
-            carrot: new Texture(iBase, new Rectangle(0, 0, iw, ih)),
-            computer: new Texture(iBase, new Rectangle(iw, 0, iw, ih)),
-            egg: new Texture(iBase, new Rectangle(0, ih, iw, ih)),
-            ball: new Texture(iBase, new Rectangle(iw, ih, iw, ih))
+            carrot: crop(itemsTex.baseTexture, 0, 0, iw, ih),
+            computer: crop(itemsTex.baseTexture, 1, 0, iw, ih),
+            egg: crop(itemsTex.baseTexture, 0, 1, iw, ih),
+            ball: crop(itemsTex.baseTexture, 1, 1, iw, ih)
         };
+
+        // Background
+        this.bgSprite = new Sprite(bgTex);
+        this.bgLayer.addChild(this.bgSprite);
     }
 
     render(world) {
-        // 1. Handle Window Resize / Scaling
-        // We want the game world height (600) to fit the screen height perfectly
         const screenW = this.app.screen.width;
         const screenH = this.app.screen.height;
+        
+        // 1. Calculate Scale: Fit World Height to Screen Height
         const scale = screenH / this.worldHeight;
+        this.stage.scale.set(scale);
         
-        this.rootContainer.scale.set(scale);
-
-        // 2. Background Handling
-        if (this.bgSprite) {
-            // Background should cover the whole world width
-            // Since root is scaled, we set BG width to worldWidth
-            this.bgSprite.width = this.worldWidth;
-            this.bgSprite.height = this.worldHeight;
-        }
-
-        // 3. Camera Logic
-        let targetX = 0;
-        if (world.creatures.length > 0) {
-            // Focus on creature
-            targetX = world.creatures[0].x - (screenW / scale) / 2;
+        // 2. Camera Logic
+        // Find focus point (First creature)
+        let camX = 0;
+        if(world.creatures[0]) {
+            camX = world.creatures[0].x - (screenW / scale / 2);
         }
         
-        // Clamp camera to world bounds
-        const maxScroll = this.worldWidth - (screenW / scale);
-        targetX = Math.max(0, Math.min(targetX, maxScroll));
+        // Clamp Camera
+        const maxCamX = this.worldWidth - (screenW / scale);
+        camX = Math.max(0, Math.min(camX, maxCamX));
         
-        // Apply camera transform
-        this.gameLayer.x = -targetX;
-        this.bgLayer.x = -targetX * 0.5; // Parallax effect
+        // Apply Camera
+        this.gameLayer.position.x = -camX;
+        this.bgLayer.position.x = -camX * 0.5; // Parallax
+        
+        // Update BG to cover visible area if needed (or just stretch)
+        // Here we stretch the BG image to the world size
+        this.bgSprite.width = this.worldWidth;
+        this.bgSprite.height = this.worldHeight;
 
-        // 4. Render Platforms
-        this.platformGraphics.clear();
-        this.platformGraphics.beginFill(0x2E8B57, 0.8); // SeaGreen, opaque
-        // Draw floor
-        // this.platformGraphics.drawRect(0, world.height - 60, world.width, 60);
-        // Draw platforms
+        // 3. Render Platforms
+        this.platformGfx.clear();
+        this.platformGfx.beginFill(0x4a5d23);
         world.platforms.forEach(p => {
-             // Draw rounded rects for platforms
-             this.platformGraphics.drawRoundedRect(p.x, p.y, p.w, p.h, 5);
-             // Add "moss" or decoration? Keep simple for now
+            this.platformGfx.drawRoundedRect(p.x, p.y, p.w, p.h, 8);
         });
-        this.platformGraphics.endFill();
+        this.platformGfx.endFill();
 
-        // Sync Agents
-        world.agents.forEach(agent => {
-            let sprite = this.sprites.get(agent);
-            if (!sprite) {
-                sprite = new Sprite(this.textures.items[agent.type]);
-                sprite.anchor.set(0.5, 1);
-                // Scale is now relative to the 600px height world. 
-                // 1.0 means true to pixel art size.
-                sprite.scale.set(1.5); 
-                this.gameLayer.addChild(sprite);
-                this.sprites.set(agent, sprite);
+        // 4. Render Items
+        world.items.forEach(item => {
+            if (!item.active) {
+                if(this.sprites.has(item)) {
+                    this.sprites.get(item).destroy();
+                    this.sprites.delete(item);
+                }
+                return;
             }
-            sprite.x = agent.x;
-            sprite.y = agent.y;
-            // Handle removal
-            if (!agent.active) {
-                sprite.destroy();
-                this.sprites.delete(agent);
+            
+            let spr = this.sprites.get(item);
+            if (!spr) {
+                spr = new Sprite(this.textures.items[item.type]);
+                spr.anchor.set(0.5, 1);
+                spr.scale.set(1.5); // Item scale
+                this.gameLayer.addChild(spr);
+                this.sprites.set(item, spr);
             }
+            spr.x = item.x;
+            spr.y = item.y;
         });
 
-        // Sync Creatures
-        world.creatures.forEach(creature => {
-            let sprite = this.sprites.get(creature);
-            if (!sprite) {
-                sprite = new AnimatedSprite(this.textures.norn.idle);
-                sprite.anchor.set(0.5, 1);
-                sprite.animationSpeed = 0.15;
-                sprite.scale.set(2); // Scale up Norn!
-                sprite.play();
-                this.gameLayer.addChild(sprite);
-                this.sprites.set(creature, sprite);
-                
-                // Add click handler
-                sprite.eventMode = 'static';
-                sprite.cursor = 'pointer';
-                sprite.on('pointerdown', () => {
-                    window.dispatchEvent(new CustomEvent('creature-select', { detail: creature }));
-                });
+        // 5. Render Creatures
+        world.creatures.forEach(c => {
+            let spr = this.sprites.get(c);
+            if (!spr) {
+                spr = new AnimatedSprite(this.textures.norn.idle);
+                spr.anchor.set(0.5, 1);
+                spr.scale.set(2.0); // Norn scale
+                spr.animationSpeed = 0.15;
+                spr.play();
+                spr.eventMode = 'static'; // Allow clicks
+                spr.cursor = 'pointer';
+                spr.on('pointerdown', () => window.dispatchEvent(new CustomEvent('creature-select', {detail: c})));
+                this.gameLayer.addChild(spr);
+                this.sprites.set(c, spr);
             }
 
-            // Update Animation state
-            if (creature.currentAnim !== creature.spriteState) {
-                creature.currentAnim = creature.spriteState;
-                sprite.textures = this.textures.norn[creature.spriteState];
-                sprite.play();
+            // State switch
+            if (c.state !== c._lastState) {
+                const anims = this.textures.norn[c.state] || this.textures.norn.idle;
+                spr.textures = anims;
+                spr.play();
+                c._lastState = c.state;
             }
 
-            sprite.x = creature.x;
-            sprite.y = creature.y;
-            // Apply flip while maintaining scale
-            sprite.scale.x = creature.direction * 2; 
+            spr.x = c.x;
+            spr.y = c.y;
+            spr.scale.x = c.facing * 2.0; // Flip
         });
     }
 }
