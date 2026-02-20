@@ -5,23 +5,23 @@ import { Application, Assets, Sprite, Container, Graphics, AnimatedSprite, Textu
 
 export class GameRenderer {
     constructor(containerId, width, height) {
-        this.app = new Application();
         this.container = document.getElementById(containerId);
         this.worldWidth = width;
         this.worldHeight = height;
         this.sprites = new Map(); // Map entity object -> Pixi Sprite
-        
         this.textures = {};
-    }
 
-    async init() {
-        await this.app.init({ 
+        // PixiJS v7 Application
+        this.app = new Application({ 
             background: '#1099bb', 
             resizeTo: this.container,
             resolution: window.devicePixelRatio || 1,
             autoDensity: true
         });
-        this.container.appendChild(this.app.canvas);
+    }
+
+    async init() {
+        this.container.appendChild(this.app.view);
         
         // Load Assets
         await this.loadAssets();
@@ -49,32 +49,34 @@ export class GameRenderer {
         const nornSheet = await Assets.load('norn_sprite.png');
         const itemsSheet = await Assets.load('items.png');
 
-        // Create Norn Animations manually since we don't have a JSON atlas
-        // Assuming sprite sheet is grid. 
-        // Let's assume norn_sprite is 4x2 grid (4 walk, 1 eat, 1 sleep, 1 stand, 1 unused)
+        // Create Norn Animations manually
+        // Pixi v7 Texture handling
         const w = nornSheet.width / 4;
         const h = nornSheet.height / 2;
+        const nBase = nornSheet.baseTexture;
         
         this.textures.norn = {
-            idle: [new Texture({ source: nornSheet.source, frame: new Rectangle(0, h, w, h) })],
+            idle: [new Texture(nBase, new Rectangle(0, h, w, h))],
             walk: [
-                new Texture({ source: nornSheet.source, frame: new Rectangle(0, 0, w, h) }),
-                new Texture({ source: nornSheet.source, frame: new Rectangle(w, 0, w, h) }),
-                new Texture({ source: nornSheet.source, frame: new Rectangle(w*2, 0, w, h) }),
-                new Texture({ source: nornSheet.source, frame: new Rectangle(w*3, 0, w, h) })
+                new Texture(nBase, new Rectangle(0, 0, w, h)),
+                new Texture(nBase, new Rectangle(w, 0, w, h)),
+                new Texture(nBase, new Rectangle(w*2, 0, w, h)),
+                new Texture(nBase, new Rectangle(w*3, 0, w, h))
             ],
-            eat: [new Texture({ source: nornSheet.source, frame: new Rectangle(w, h, w, h) })],
-            sleep: [new Texture({ source: nornSheet.source, frame: new Rectangle(w*2, h, w, h) })]
+            eat: [new Texture(nBase, new Rectangle(w, h, w, h))],
+            sleep: [new Texture(nBase, new Rectangle(w*2, h, w, h))]
         };
 
         // Items
         const iw = itemsSheet.width / 2;
         const ih = itemsSheet.height / 2;
+        const iBase = itemsSheet.baseTexture;
+
         this.textures.items = {
-            carrot: new Texture({ source: itemsSheet.source, frame: new Rectangle(0, 0, iw, ih) }),
-            computer: new Texture({ source: itemsSheet.source, frame: new Rectangle(iw, 0, iw, ih) }),
-            egg: new Texture({ source: itemsSheet.source, frame: new Rectangle(0, ih, iw, ih) }),
-            ball: new Texture({ source: itemsSheet.source, frame: new Rectangle(iw, ih, iw, ih) })
+            carrot: new Texture(iBase, new Rectangle(0, 0, iw, ih)),
+            computer: new Texture(iBase, new Rectangle(iw, 0, iw, ih)),
+            egg: new Texture(iBase, new Rectangle(0, ih, iw, ih)),
+            ball: new Texture(iBase, new Rectangle(iw, ih, iw, ih))
         };
     }
 
