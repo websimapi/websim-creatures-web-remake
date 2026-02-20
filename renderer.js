@@ -1,7 +1,7 @@
 /**
  * Creatures Renderer - Handles PixiJS
  */
-import { Application, Assets, Sprite, Container, Graphics, AnimatedSprite, Texture } from 'pixi.js';
+import { Application, Assets, Sprite, Container, Graphics, AnimatedSprite, Texture, Rectangle } from 'pixi.js';
 
 export class GameRenderer {
     constructor(containerId, width, height) {
@@ -40,6 +40,7 @@ export class GameRenderer {
         bg.width = this.worldWidth;
         bg.height = this.app.screen.height; // Stretch to screen height for MVP
         this.bgLayer.addChild(bg);
+        this.bgSprite = bg;
     }
 
     async loadAssets() {
@@ -55,29 +56,35 @@ export class GameRenderer {
         const h = nornSheet.height / 2;
         
         this.textures.norn = {
-            idle: [new Texture({ source: nornSheet.source, frame: { x: 0, y: h, w: w, h: h } })],
+            idle: [new Texture({ source: nornSheet.source, frame: new Rectangle(0, h, w, h) })],
             walk: [
-                new Texture({ source: nornSheet.source, frame: { x: 0, y: 0, w: w, h: h } }),
-                new Texture({ source: nornSheet.source, frame: { x: w, y: 0, w: w, h: h } }),
-                new Texture({ source: nornSheet.source, frame: { x: w*2, y: 0, w: w, h: h } }),
-                new Texture({ source: nornSheet.source, frame: { x: w*3, y: 0, w: w, h: h } })
+                new Texture({ source: nornSheet.source, frame: new Rectangle(0, 0, w, h) }),
+                new Texture({ source: nornSheet.source, frame: new Rectangle(w, 0, w, h) }),
+                new Texture({ source: nornSheet.source, frame: new Rectangle(w*2, 0, w, h) }),
+                new Texture({ source: nornSheet.source, frame: new Rectangle(w*3, 0, w, h) })
             ],
-            eat: [new Texture({ source: nornSheet.source, frame: { x: w, y: h, w: w, h: h } })],
-            sleep: [new Texture({ source: nornSheet.source, frame: { x: w*2, y: h, w: w, h: h } })]
+            eat: [new Texture({ source: nornSheet.source, frame: new Rectangle(w, h, w, h) })],
+            sleep: [new Texture({ source: nornSheet.source, frame: new Rectangle(w*2, h, w, h) })]
         };
 
         // Items
         const iw = itemsSheet.width / 2;
         const ih = itemsSheet.height / 2;
         this.textures.items = {
-            carrot: new Texture({ source: itemsSheet.source, frame: { x: 0, y: 0, w: iw, h: ih } }),
-            computer: new Texture({ source: itemsSheet.source, frame: { x: iw, y: 0, w: iw, h: ih } }),
-            egg: new Texture({ source: itemsSheet.source, frame: { x: 0, y: ih, w: iw, h: ih } }),
-            ball: new Texture({ source: itemsSheet.source, frame: { x: iw, y: ih, w: iw, h: ih } })
+            carrot: new Texture({ source: itemsSheet.source, frame: new Rectangle(0, 0, iw, ih) }),
+            computer: new Texture({ source: itemsSheet.source, frame: new Rectangle(iw, 0, iw, ih) }),
+            egg: new Texture({ source: itemsSheet.source, frame: new Rectangle(0, ih, iw, ih) }),
+            ball: new Texture({ source: itemsSheet.source, frame: new Rectangle(iw, ih, iw, ih) })
         };
     }
 
     render(world) {
+        // Ensure BG fits screen
+        if (this.bgSprite) {
+            this.bgSprite.width = this.worldWidth;
+            this.bgSprite.height = this.app.screen.height;
+        }
+
         // Center camera on creatures (simple logic)
         // In a real game, smooth damping
         let targetX = 0;

@@ -22,6 +22,9 @@ async function start() {
     selectedCreature = norn;
     updateUISelection();
 
+    // Reset time to prevent huge delta on first frame
+    lastTime = performance.now();
+
     // Game Loop
     requestAnimationFrame(loop);
 }
