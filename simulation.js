@@ -44,30 +44,32 @@ export class Biochemistry {
 
 export class Brain {
     constructor() {
-        // Inputs: 0:NearFood, 1:NearWall, 2:Hunger, 3:Pain, 4:Rand
+        // Inputs: 0:NearFood, 1:NearWall, 2:Hunger, 3:Pain, 4:Rand, 5:Oscillator
         // Outputs: ACTIONS
-        this.inputSize = 5;
-        this.hiddenSize = 6;
+        this.inputSize = 6;
+        this.hiddenSize = 8;
         this.outputSize = 6;
         
         this.inputs = new Float32Array(this.inputSize);
         this.hidden = new Float32Array(this.hiddenSize);
         this.outputs = new Float32Array(this.outputSize);
         
-        // Initialize with slightly larger random weights to encourage early movement
-        this.wIH = new Float32Array(this.inputSize * this.hiddenSize).map(()=>Math.random()*2.0 - 1.0);
-        this.wHO = new Float32Array(this.hiddenSize * this.outputSize).map(()=>Math.random()*2.0 - 1.0);
+        // Random weights - heavier initialization to ensure activity
+        this.wIH = new Float32Array(this.inputSize * this.hiddenSize).map(()=>Math.random()*4.0 - 2.0);
+        this.wHO = new Float32Array(this.hiddenSize * this.outputSize).map(()=>Math.random()*4.0 - 2.0);
         
-        // Instinct: Hunger -> Eat
-        // Map Input 2 (Hunger) strongly to Output 3 (Eat) via Hidden 0
-        this.wIH[2 * this.hiddenSize + 0] = 2.0;
-        this.wHO[0 * this.outputSize + 3] = 2.0;
+        // Instincts (Hardcoded pathways to ensure survival/movement)
+        
+        // 1. Hunger (In 2) -> Eat (Out 3)
+        // We'll set a direct strong path through Hidden 0
+        this.wIH[2 * this.hiddenSize + 0] = 5.0; // Hunger -> Hidden[0]
+        this.wHO[0 * this.outputSize + 3] = 5.0; // Hidden[0] -> Eat
 
-        // Instinct: Random -> Move (Wanderlust)
-        // Map Input 4 (Random) to Output 1 (Left) and 2 (Right) via Hidden 1
-        this.wIH[4 * this.hiddenSize + 1] = 1.5;
-        this.wHO[1 * this.outputSize + 1] = 1.0; // Left
-        this.wHO[1 * this.outputSize + 2] = -1.0; // Right (Anti-correlation on same node for oscillation)
+        // 2. Random/Oscillator (In 4/5) -> Move (Out 1/2)
+        // Ensure they don't just stand still. 
+        this.wIH[4 * this.hiddenSize + 1] = 3.0; // Random -> Hidden[1]
+        this.wHO[1 * this.outputSize + 1] = 2.0; // Hidden[1] -> Left
+        this.wHO[1 * this.outputSize + 2] = -2.0; // Hidden[1] -> Right (negative correlation)
     }
 
     tick(senses, bio) {
@@ -76,7 +78,8 @@ export class Brain {
         this.inputs[1] = senses.nearWall ? 1 : 0;
         this.inputs[2] = bio.getLevel(CHEMICALS.HUNGER) / 255;
         this.inputs[3] = bio.getLevel(CHEMICALS.PAIN) / 255;
-        this.inputs[4] = Math.random();
+        this.inputs[4] = Math.random(); 
+        this.inputs[5] = Math.sin(performance.now() / 500); // Oscillator for rhythmic movement
 
         // Feed Forward
         for(let h=0; h<this.hiddenSize; h++) {
@@ -157,25 +160,25 @@ export class World {
             
             // Gravity
             item.vy += 0.5 * dt;
+            const prevY = item.y;
             item.y += item.vy * dt;
             item.x += item.vx * dt;
             item.vx *= 0.95; // Drag
 
-            // Platform Collisions
-            let onGround = false;
+            // Platform Collisions (Snap to top)
             for(let p of this.platforms) {
-                // Check if falling through top of platform
-                if (item.vy > 0 && 
-                    item.x + item.w/2 > p.x && item.x - item.w/2 < p.x + p.w &&
-                    item.y >= p.y && (item.y - item.vy*dt) <= p.y + 5) {
-                        item.y = p.y;
-                        item.vy = 0;
-                        item.vx *= 0.8; // Friction
-                        onGround = true;
+                // Horizontal Overlap
+                if (item.x + item.w/2 > p.x && item.x - item.w/2 < p.x + p.w) {
+                    // Vertical Cross (Falling)
+                    if (item.vy >= 0 && prevY <= p.y + 1 && item.y >= p.y - 1) {
+                         item.y = p.y;
+                         item.vy = 0;
+                         item.vx *= 0.8;
+                    }
                 }
             }
             
-            // Floor clamp (fallback)
+            // Floor clamp (fallback hard limit)
             if (item.y > this.height - 40) {
                 item.y = this.height - 40;
                 item.vy = 0;
@@ -208,8 +211,13 @@ export class Creature {
     tick(world, dt) {
         this.bio.tick(dt);
         
-        // Physics
+        // Physics Loop
         this.vy += 0.9 * dt; // Gravity
+        
+        // Terminal velocity clamp to prevent tunnelling
+        if (this.vy > 20) this.vy = 20;
+
+        const prevY = this.y;
         this.x += this.vx * dt;
         this.y += this.vy * dt;
         
@@ -218,21 +226,31 @@ export class Creature {
         
         // Collisions
         this.onGround = false;
-        // Check platforms
+        
+        // Platform Collisions
         for(let p of world.platforms) {
-            // Check falling down through top
-            if (this.vy >= 0 && 
-                this.x >= p.x && this.x <= p.x + p.w &&
-                this.y >= p.y && (this.y - this.vy*dt) <= p.y + 15) { // Increased tolerance for high speeds
+            // Horizontal check (feet width approx 10px tolerance)
+            if (this.x >= p.x - 10 && this.x <= p.x + p.w + 10) {
+                // Vertical check: Did we cross the line downwards?
+                // We use prevY to see if we were above or at the platform level previously
+                if (this.vy >= 0 && prevY <= p.y + 5 && this.y >= p.y) {
                     this.y = p.y;
                     this.vy = 0;
                     this.onGround = true;
+                }
             }
         }
         
+        // Absolute Floor Clamp (Safety net)
+        if (this.y > world.height - 40) {
+            this.y = world.height - 40;
+            this.vy = 0;
+            this.onGround = true;
+        }
+
         // Bounds
-        if (this.x < 20) this.x = 20;
-        if (this.x > world.width-20) this.x = world.width-20;
+        if (this.x < 20) { this.x = 20; this.vx = 0; }
+        if (this.x > world.width-20) { this.x = world.width-20; this.vx = 0; }
         
         // Senses
         const senses = { nearFood: false, nearWall: false };

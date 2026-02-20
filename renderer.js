@@ -114,16 +114,22 @@ export class GameRenderer {
         this.bgLayer.position.x = -camX * 0.5; // Parallax
         
         // Adjust Background to cover world
-        // We stretch slightly to ensure coverage, but anchor is (0,0)
-        this.bgSprite.width = this.worldWidth;
+        this.bgSprite.width = this.worldWidth + 200; // Extra width for parallax coverage
         this.bgSprite.height = this.worldHeight;
 
         // 3. Render Platforms
         this.platformGfx.clear();
-        this.platformGfx.beginFill(0x3a4d23);
-        this.platformGfx.lineStyle(2, 0x5a7d33);
+        this.platformGfx.beginFill(0x1a2d13); // Darker organic color
+        this.platformGfx.lineStyle(2, 0x4a6d23);
         world.platforms.forEach(p => {
+            // Platforms are x,y (top-left). 
             this.platformGfx.drawRoundedRect(p.x, p.y, p.w, p.h, 4);
+            
+            // Add a "grass" top
+            this.platformGfx.beginFill(0x5a8d33);
+            this.platformGfx.drawRoundedRect(p.x, p.y, p.w, 6, 2);
+            this.platformGfx.endFill();
+            this.platformGfx.beginFill(0x1a2d13); // Reset
         });
         this.platformGfx.endFill();
 
@@ -155,10 +161,10 @@ export class GameRenderer {
             let spr = this.sprites.get(c);
             if (!spr) {
                 spr = new AnimatedSprite(this.textures.norn.idle);
-                spr.anchor.set(0.5, 1);
+                spr.anchor.set(0.5, 1); // Feet at (x, y)
                 // Initial scale set, but updated frame-by-frame for facing
                 spr.scale.set(this.NORN_SCALE); 
-                spr.zIndex = 20; 
+                spr.zIndex = 100; // High Z-index to ensure on top of platforms
                 spr.animationSpeed = 0.15;
                 spr.play();
                 spr.eventMode = 'static';
