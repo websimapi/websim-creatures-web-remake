@@ -18,6 +18,9 @@ export class GameRenderer {
             resolution: window.devicePixelRatio || 1,
             autoDensity: true
         });
+        
+        // Enable z-sorting
+        this.app.stage.sortableChildren = true;
     }
 
     async init() {
@@ -31,6 +34,11 @@ export class GameRenderer {
         this.gameLayer = new Container();
         this.uiLayer = new Container();
         
+        // Explicit Z-Index to prevent hiding bugs
+        this.bgLayer.zIndex = 0;
+        this.gameLayer.zIndex = 10;
+        this.uiLayer.zIndex = 20;
+
         this.app.stage.addChild(this.bgLayer);
         this.app.stage.addChild(this.gameLayer);
         this.app.stage.addChild(this.uiLayer);
@@ -105,6 +113,7 @@ export class GameRenderer {
             if (!sprite) {
                 sprite = new Sprite(this.textures.items[agent.type]);
                 sprite.anchor.set(0.5, 1);
+                sprite.scale.set(1.5); // Make items visible
                 this.gameLayer.addChild(sprite);
                 this.sprites.set(agent, sprite);
             }
@@ -124,6 +133,7 @@ export class GameRenderer {
                 sprite = new AnimatedSprite(this.textures.norn.idle);
                 sprite.anchor.set(0.5, 1);
                 sprite.animationSpeed = 0.15;
+                sprite.scale.set(2); // Scale up Norn!
                 sprite.play();
                 this.gameLayer.addChild(sprite);
                 this.sprites.set(creature, sprite);
@@ -145,7 +155,8 @@ export class GameRenderer {
 
             sprite.x = creature.x;
             sprite.y = creature.y;
-            sprite.scale.x = creature.direction; // Flip
+            // Apply flip while maintaining scale
+            sprite.scale.x = creature.direction * 2; 
         });
     }
 }

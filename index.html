@@ -17,14 +17,23 @@
     <div id="game-container"></div>
     
     <div id="ui-overlay">
+        <!-- Persistent Brain HUD -->
+        <div id="brain-hud">
+            <div class="hud-title">Neural Net Live Feed</div>
+            <canvas id="brain-canvas" width="220" height="140"></canvas>
+            <div class="brain-labels">
+                <span>In</span>
+                <span>Hidden</span>
+                <span>Out</span>
+            </div>
+        </div>
+
         <div id="top-bar">
             <div class="readout">
                 <span id="creature-name">No Selection</span>
                 <span id="creature-state">State: Idle</span>
             </div>
             <div class="controls">
-                <button id="btn-health" class="active">Health</button>
-                <button id="btn-brain">Brain</button>
                 <button id="btn-reset">Hatch New</button>
             </div>
         </div>
@@ -48,19 +57,6 @@
                 <div class="bar-container">
                     <label>Boredom Drive</label>
                     <div class="bar-bg"><div class="bar-fill" id="bar-boredom" style="width: 10%; background: #2196f3;"></div></div>
-                </div>
-            </div>
-
-            <!-- Brain Panel -->
-            <div id="panel-brain" class="panel">
-                <h3>Neural Activity</h3>
-                <div id="brain-viz">
-                    <canvas id="brain-canvas" width="300" height="150"></canvas>
-                </div>
-                <div class="brain-legend">
-                    <span style="color:#00ff00">Perception</span>
-                    <span style="color:#ffff00">Concepts</span>
-                    <span style="color:#ff00ff">Decisions</span>
                 </div>
             </div>
         </div>

@@ -58,8 +58,7 @@ const uiElements = {
     },
     brainCanvas: document.getElementById('brain-canvas'),
     panels: {
-        health: document.getElementById('panel-health'),
-        brain: document.getElementById('panel-brain')
+        health: document.getElementById('panel-health')
     }
 };
 
@@ -74,7 +73,7 @@ function updateScienceKit() {
     if (!selectedCreature) return;
     
     // Update State Text
-    const stateNames = ['Idle', 'Left', 'Right', 'Eating', 'Sleeping'];
+    const stateNames = ['Idle', 'Left', 'Right', 'Eating', 'Sleeping', 'Jumping'];
     uiElements.state.innerText = `State: ${stateNames[selectedCreature.state] || 'Unknown'}`;
 
     // Update Bars
@@ -84,10 +83,8 @@ function updateScienceKit() {
     uiElements.bars.hunger.style.width = (bio.getLevel(CHEMICALS.DRIVE_HUNGER) / 255 * 100) + '%';
     uiElements.bars.boredom.style.width = (bio.getLevel(CHEMICALS.DRIVE_BOREDOM) / 255 * 100) + '%';
 
-    // Draw Brain (if visible)
-    if (uiElements.panels.brain.classList.contains('active-panel')) {
-        drawBrain(selectedCreature.brain);
-    }
+    // Always draw brain
+    drawBrain(selectedCreature.brain);
 }
 
 function drawBrain(brain) {
@@ -95,11 +92,11 @@ function drawBrain(brain) {
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
     
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
+    // Clear with transparency
+    ctx.clearRect(0,0,w,h);
     
-    // Visualize Activations
-    // Inputs (Top) -> Hidden (Middle) -> Output (Bottom)
+    // Connections (Visualize weights? Only strong ones)
+    // For MVP just visualize activity
     
     const drawLayer = (layer, y, color) => {
         const count = layer.length;
@@ -128,14 +125,11 @@ window.addEventListener('creature-select', (e) => {
 });
 
 // Panel switching
-document.getElementById('btn-health').onclick = () => showPanel('health');
-document.getElementById('btn-brain').onclick = () => showPanel('brain');
+// document.getElementById('btn-health').onclick = () => showPanel('health');
 
 function showPanel(id) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active-panel'));
-    document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
     document.getElementById(`panel-${id}`).classList.add('active-panel');
-    document.getElementById(`btn-${id}`).classList.add('active');
 }
 
 document.getElementById('btn-reset').onclick = () => {

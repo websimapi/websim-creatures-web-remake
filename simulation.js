@@ -35,7 +35,7 @@ export const ACTIONS = {
     MOVE_RIGHT: 2,
     EAT: 3,
     SLEEP: 4,
-    SPEAK: 5
+    JUMP: 5
 };
 
 // --- Biochemistry System ---
@@ -97,12 +97,12 @@ export class Brain {
     constructor() {
         // Simplified architecture for MVP
         // 6 Inputs: [SeeFood, SeeToy, SeeWall, Hunger, Tiredness, Random]
-        // 4 Hidden
-        // 5 Outputs: [Idle, Left, Right, Eat, Sleep]
+        // 8 Hidden
+        // 6 Outputs: [Idle, Left, Right, Eat, Sleep, Jump]
         
         this.inputSize = 6;
         this.hiddenSize = 8;
-        this.outputSize = 5;
+        this.outputSize = 6;
         
         this.inputs = new Float32Array(this.inputSize);
         this.hidden = new Float32Array(this.hiddenSize);
@@ -186,7 +186,7 @@ export class Brain {
         let action = ACTIONS.IDLE;
         
         // Map output neurons to actions
-        const actionMap = [ACTIONS.IDLE, ACTIONS.MOVE_LEFT, ACTIONS.MOVE_RIGHT, ACTIONS.EAT, ACTIONS.SLEEP];
+        const actionMap = [ACTIONS.IDLE, ACTIONS.MOVE_LEFT, ACTIONS.MOVE_RIGHT, ACTIONS.EAT, ACTIONS.SLEEP, ACTIONS.JUMP];
         
         for(let i=0; i<this.outputSize; i++) {
             if (this.outputs[i] > maxVal) {
@@ -217,6 +217,8 @@ export class Creature {
         this.x = x;
         this.y = y;
         this.vx = 0;
+        this.vy = 0;
+        this.onGround = false;
         this.width = 40;
         this.height = 50;
         
@@ -233,6 +235,28 @@ export class Creature {
     tick(world, dt) {
         this.age += dt;
         this.biochemistry.tick(dt);
+
+        // Physics: Gravity
+        this.vy += 0.5 * dt;
+        this.y += this.vy * dt;
+        this.x += this.vx * dt;
+        
+        // Ground Collision (Simple floor at world height - 60)
+        const groundLevel = world.height - 60;
+        if (this.y > groundLevel) {
+            this.y = groundLevel;
+            this.vy = 0;
+            this.onGround = true;
+        } else {
+            this.onGround = false;
+        }
+
+        // Friction
+        if (this.onGround) {
+            this.vx *= 0.8;
+        } else {
+            this.vx *= 0.95; // Air resistance
+        }
 
         // 1. Perception
         const senses = {
@@ -267,9 +291,8 @@ export class Creature {
     }
 
     executeAction(action, targetObject, world, dt) {
-        const speed = 2;
+        const speed = 5; // Faster for platforming feel
         this.state = action;
-        this.vx = 0;
 
         // Energy check
         if (this.biochemistry.getLevel(CHEMICALS.GLUCOSE) < 10 && action !== ACTIONS.SLEEP) {
@@ -279,16 +302,27 @@ export class Creature {
 
         switch(action) {
             case ACTIONS.MOVE_LEFT:
-                this.vx = -speed;
+                if (this.onGround) {
+                    this.vx = -speed;
+                    this.spriteState = 'walk';
+                }
                 this.direction = -1;
-                this.spriteState = 'walk';
-                this.x = Math.max(20, this.x + this.vx);
                 break;
             case ACTIONS.MOVE_RIGHT:
-                this.vx = speed;
+                if (this.onGround) {
+                    this.vx = speed;
+                    this.spriteState = 'walk';
+                }
                 this.direction = 1;
-                this.spriteState = 'walk';
-                this.x = Math.min(world.width - 20, this.x + this.vx);
+                break;
+            case ACTIONS.JUMP:
+                if (this.onGround) {
+                    this.vy = -12; // Jump impulse
+                    this.onGround = false;
+                    this.spriteState = 'walk'; // Reuse walk for jump for now
+                    // Jumping costs energy
+                    this.biochemistry.chemicals[CHEMICALS.GLUCOSE] -= 2;
+                }
                 break;
             case ACTIONS.EAT:
                 if (targetObject && targetObject.type === 'carrot') {
@@ -306,14 +340,22 @@ export class Creature {
             case ACTIONS.SLEEP:
                 this.spriteState = 'sleep';
                 this.biochemistry.chemicals[CHEMICALS.SLEEPINESS] *= 0.9; // Reduce sleepiness
+                this.vx *= 0.5; // Slow down faster
                 break;
             default:
-                this.spriteState = 'idle';
+                // Idle
+                if (this.onGround && Math.abs(this.vx) < 0.1) {
+                    this.spriteState = 'idle';
+                }
                 break;
         }
         
+        // Boundaries
+        if (this.x < 20) { this.x = 20; this.vx = 0; }
+        if (this.x > world.width - 20) { this.x = world.width - 20; this.vx = 0; }
+
         // Burn energy based on movement
-        if (Math.abs(this.vx) > 0) {
+        if (Math.abs(this.vx) > 1) {
             this.biochemistry.chemicals[CHEMICALS.GLUCOSE] -= 0.1 * dt;
         }
     }
