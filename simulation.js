@@ -135,7 +135,8 @@ export class Brain {
         this.inputs[2] = senses.nearWall ? 1.0 : 0.0;
         this.inputs[3] = biochemistry.getLevel(CHEMICALS.DRIVE_HUNGER) / 255;
         this.inputs[4] = biochemistry.getLevel(CHEMICALS.DRIVE_TIREDNESS) / 255;
-        this.inputs[5] = Math.random(); // Random noise for exploration
+        // Use the random input as an oscillator or clock to encourage state changes
+        this.inputs[5] = Math.sin(Date.now() / 1000); 
 
         // 2. Feed Forward (Input -> Hidden)
         for(let h=0; h<this.hiddenSize; h++) {
@@ -241,14 +242,34 @@ export class Creature {
         this.y += this.vy * dt;
         this.x += this.vx * dt;
         
+        this.onGround = false;
+
+        // Platform Collision (One-way: only land if falling)
+        if (this.vy >= 0) {
+            // Check world platforms
+            for (const p of world.platforms) {
+                // Check X bounds (with small margin for sprite width)
+                if (this.x > p.x - 10 && this.x < p.x + p.w + 10) {
+                    // Check Y bounds: Only collide if feet passed through top of platform
+                    // Previous Y = this.y - this.vy * dt
+                    // Current Y = this.y
+                    const prevY = this.y - this.vy * dt;
+                    if (prevY <= p.y && this.y >= p.y) {
+                        this.y = p.y;
+                        this.vy = 0;
+                        this.onGround = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         // Ground Collision (Simple floor at world height - 60)
         const groundLevel = world.height - 60;
-        if (this.y > groundLevel) {
+        if (!this.onGround && this.y > groundLevel) {
             this.y = groundLevel;
             this.vy = 0;
             this.onGround = true;
-        } else {
-            this.onGround = false;
         }
 
         // Friction
@@ -262,11 +283,12 @@ export class Creature {
         const senses = {
             seeFood: false,
             seeToy: false,
-            nearWall: false
+            nearWall: false,
+            onGround: this.onGround // Let the brain know if we can jump
         };
 
         // Look around
-        const visionRange = 200;
+        const visionRange = 250;
         let nearestFood = null;
 
         world.agents.forEach(agent => {
@@ -367,16 +389,45 @@ export class World {
         this.height = height;
         this.creatures = [];
         this.agents = [];
+        this.platforms = [];
+        
+        // Create Environment
+        this.generatePlatforms();
         
         // Initial population
         this.spawnFood();
         this.spawnFood();
-        this.agents.push(new Agent('ball', 400, height - 60));
+        this.spawnToy();
+    }
+
+    generatePlatforms() {
+        // Main ground is handled by collision logic, but let's add some floating structures
+        // Format: { x, y, w, h }
+        this.platforms.push({ x: 300, y: 450, w: 200, h: 20 }); // Low left
+        this.platforms.push({ x: 600, y: 350, w: 200, h: 20 }); // Mid
+        this.platforms.push({ x: 900, y: 450, w: 200, h: 20 }); // Low right
+        this.platforms.push({ x: 1200, y: 300, w: 300, h: 20 }); // High shelf
     }
 
     spawnFood() {
-        const x = 50 + Math.random() * (this.width - 100);
-        this.agents.push(new Agent('carrot', x, this.height - 60));
+        // Try to spawn on platforms or ground
+        let x = 50 + Math.random() * (this.width - 100);
+        let y = this.height - 60;
+        
+        // 30% chance to spawn on a platform
+        if (Math.random() < 0.3 && this.platforms.length > 0) {
+            const p = this.platforms[Math.floor(Math.random() * this.platforms.length)];
+            x = p.x + Math.random() * p.w;
+            y = p.y;
+        }
+
+        this.agents.push(new Agent('carrot', x, y));
+    }
+
+    spawnToy() {
+        // Spawn a computer or ball
+        const type = Math.random() > 0.5 ? 'ball' : 'computer';
+        this.agents.push(new Agent(type, 800, this.height - 60));
     }
 
     addCreature() {

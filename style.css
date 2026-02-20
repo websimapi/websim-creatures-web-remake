@@ -106,14 +106,15 @@ h3 { margin: 0 0 10px 0; font-size: 14px; color: #00aaff; border-bottom: 1px sol
     position: absolute;
     top: 60px;
     left: 10px;
-    background: rgba(0, 20, 30, 0.7);
+    background: rgba(0, 20, 30, 0.85);
     border: 1px solid #00aaff;
     border-radius: 6px;
     padding: 5px;
     pointer-events: none;
     display: flex;
     flex-direction: column;
-    z-index: 100;
+    z-index: 999; /* Ensure on top */
+    box-shadow: 0 0 10px rgba(0,170,255,0.3);
 }
 
 .hud-title {

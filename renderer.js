@@ -30,6 +30,9 @@ export class GameRenderer {
         await this.loadAssets();
         
         // Setup Layers
+        this.rootContainer = new Container();
+        this.app.stage.addChild(this.rootContainer);
+
         this.bgLayer = new Container();
         this.gameLayer = new Container();
         this.uiLayer = new Container();
@@ -38,17 +41,21 @@ export class GameRenderer {
         this.bgLayer.zIndex = 0;
         this.gameLayer.zIndex = 10;
         this.uiLayer.zIndex = 20;
-
-        this.app.stage.addChild(this.bgLayer);
-        this.app.stage.addChild(this.gameLayer);
-        this.app.stage.addChild(this.uiLayer);
+        
+        this.rootContainer.sortableChildren = true;
+        this.rootContainer.addChild(this.bgLayer);
+        this.rootContainer.addChild(this.gameLayer);
+        this.rootContainer.addChild(this.uiLayer);
 
         // Setup Background
         const bg = new Sprite(this.textures.bg);
-        bg.width = this.worldWidth;
-        bg.height = this.app.screen.height; // Stretch to screen height for MVP
+        // We will scale this in render/resize
         this.bgLayer.addChild(bg);
         this.bgSprite = bg;
+        
+        // Create Platform Graphics
+        this.platformGraphics = new Graphics();
+        this.gameLayer.addChild(this.platformGraphics);
     }
 
     async loadAssets() {
@@ -89,23 +96,49 @@ export class GameRenderer {
     }
 
     render(world) {
-        // Ensure BG fits screen
+        // 1. Handle Window Resize / Scaling
+        // We want the game world height (600) to fit the screen height perfectly
+        const screenW = this.app.screen.width;
+        const screenH = this.app.screen.height;
+        const scale = screenH / this.worldHeight;
+        
+        this.rootContainer.scale.set(scale);
+
+        // 2. Background Handling
         if (this.bgSprite) {
+            // Background should cover the whole world width
+            // Since root is scaled, we set BG width to worldWidth
             this.bgSprite.width = this.worldWidth;
-            this.bgSprite.height = this.app.screen.height;
+            this.bgSprite.height = this.worldHeight;
         }
 
-        // Center camera on creatures (simple logic)
-        // In a real game, smooth damping
+        // 3. Camera Logic
         let targetX = 0;
         if (world.creatures.length > 0) {
-            targetX = world.creatures[0].x - this.app.screen.width / 2;
+            // Focus on creature
+            targetX = world.creatures[0].x - (screenW / scale) / 2;
         }
-        // Clamp camera
-        targetX = Math.max(0, Math.min(targetX, this.worldWidth - this.app.screen.width));
         
+        // Clamp camera to world bounds
+        const maxScroll = this.worldWidth - (screenW / scale);
+        targetX = Math.max(0, Math.min(targetX, maxScroll));
+        
+        // Apply camera transform
         this.gameLayer.x = -targetX;
-        this.bgLayer.x = -targetX * 0.5; // Parallax
+        this.bgLayer.x = -targetX * 0.5; // Parallax effect
+
+        // 4. Render Platforms
+        this.platformGraphics.clear();
+        this.platformGraphics.beginFill(0x2E8B57, 0.8); // SeaGreen, opaque
+        // Draw floor
+        // this.platformGraphics.drawRect(0, world.height - 60, world.width, 60);
+        // Draw platforms
+        world.platforms.forEach(p => {
+             // Draw rounded rects for platforms
+             this.platformGraphics.drawRoundedRect(p.x, p.y, p.w, p.h, 5);
+             // Add "moss" or decoration? Keep simple for now
+        });
+        this.platformGraphics.endFill();
 
         // Sync Agents
         world.agents.forEach(agent => {
@@ -113,7 +146,9 @@ export class GameRenderer {
             if (!sprite) {
                 sprite = new Sprite(this.textures.items[agent.type]);
                 sprite.anchor.set(0.5, 1);
-                sprite.scale.set(1.5); // Make items visible
+                // Scale is now relative to the 600px height world. 
+                // 1.0 means true to pixel art size.
+                sprite.scale.set(1.5); 
                 this.gameLayer.addChild(sprite);
                 this.sprites.set(agent, sprite);
             }

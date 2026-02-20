@@ -19,6 +19,10 @@ async function start() {
     
     // Hatch first norn
     const norn = world.addCreature();
+    // Move norn to start position
+    norn.x = 250;
+    norn.y = 300; // Drop from sky
+    
     selectedCreature = norn;
     updateUISelection();
 
