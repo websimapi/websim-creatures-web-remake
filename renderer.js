@@ -72,6 +72,11 @@ export class GameRenderer {
         // Items: 2x2 grid
         const iw = itemsTex.width / 2;
         const ih = itemsTex.height / 2;
+        
+        // Ensure nearest neighbor scaling for pixel art look
+        itemsTex.baseTexture.scaleMode = 'nearest';
+        nornTex.baseTexture.scaleMode = 'nearest';
+        
         this.textures.items = {
             carrot: crop(itemsTex.baseTexture, 0, 0, iw, ih),
             computer: crop(itemsTex.baseTexture, 1, 0, iw, ih),
@@ -151,8 +156,9 @@ export class GameRenderer {
             if (!spr) {
                 spr = new AnimatedSprite(this.textures.norn.idle);
                 spr.anchor.set(0.5, 1);
-                spr.scale.set(this.NORN_SCALE); // Small Scale
-                spr.zIndex = 20; // High Z-Index to ensure on top
+                // Initial scale set, but updated frame-by-frame for facing
+                spr.scale.set(this.NORN_SCALE); 
+                spr.zIndex = 20; 
                 spr.animationSpeed = 0.15;
                 spr.play();
                 spr.eventMode = 'static';
@@ -165,15 +171,19 @@ export class GameRenderer {
             // State switch
             if (c.state !== c._lastState) {
                 const anims = this.textures.norn[c.state] || this.textures.norn.idle;
-                spr.textures = anims;
-                spr.play();
+                // Only switch if different
+                if (spr.textures !== anims) {
+                    spr.textures = anims;
+                    spr.play();
+                }
                 c._lastState = c.state;
             }
 
             spr.x = c.x;
             spr.y = c.y;
-            // Paper Mario Style Flip
-            spr.scale.x = c.facing * this.NORN_SCALE; 
+            // Paper Mario Style Flip: Absolute value of scale * facing
+            spr.scale.x = Math.abs(this.NORN_SCALE) * c.facing;
+            spr.scale.y = this.NORN_SCALE;
         });
     }
 }

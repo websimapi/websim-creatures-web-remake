@@ -54,14 +54,20 @@ export class Brain {
         this.hidden = new Float32Array(this.hiddenSize);
         this.outputs = new Float32Array(this.outputSize);
         
-        this.wIH = new Float32Array(this.inputSize * this.hiddenSize).map(()=>Math.random()*0.5-0.25);
-        this.wHO = new Float32Array(this.hiddenSize * this.outputSize).map(()=>Math.random()*0.5-0.25);
+        // Initialize with slightly larger random weights to encourage early movement
+        this.wIH = new Float32Array(this.inputSize * this.hiddenSize).map(()=>Math.random()*2.0 - 1.0);
+        this.wHO = new Float32Array(this.hiddenSize * this.outputSize).map(()=>Math.random()*2.0 - 1.0);
         
         // Instinct: Hunger -> Eat
-        // Map Input 2 (Hunger) strongly to Output 3 (Eat)
-        // Via hidden 0
-        this.wIH[2 * this.hiddenSize + 0] = 1.0;
-        this.wHO[0 * this.outputSize + 3] = 1.0;
+        // Map Input 2 (Hunger) strongly to Output 3 (Eat) via Hidden 0
+        this.wIH[2 * this.hiddenSize + 0] = 2.0;
+        this.wHO[0 * this.outputSize + 3] = 2.0;
+
+        // Instinct: Random -> Move (Wanderlust)
+        // Map Input 4 (Random) to Output 1 (Left) and 2 (Right) via Hidden 1
+        this.wIH[4 * this.hiddenSize + 1] = 1.5;
+        this.wHO[1 * this.outputSize + 1] = 1.0; // Left
+        this.wHO[1 * this.outputSize + 2] = -1.0; // Right (Anti-correlation on same node for oscillation)
     }
 
     tick(senses, bio) {
@@ -131,8 +137,8 @@ export class World {
     }
 
     spawnItem(type, x, y) {
-        // Reduced item hitbox to 20x20
-        this.items.push({type, x, y, w:20, h:20, active:true});
+        // Reduced item hitbox to 20x20. Items now have velocity (vx, vy)
+        this.items.push({type, x, y, w:20, h:20, vx:0, vy:0, active:true});
     }
 
     addCreature() {
@@ -145,9 +151,40 @@ export class World {
         this.time += dt;
         this.creatures.forEach(c => c.tick(this, dt));
         
+        // Item Physics (Gravity + Platform Collision)
+        this.items.forEach(item => {
+            if (!item.active) return;
+            
+            // Gravity
+            item.vy += 0.5 * dt;
+            item.y += item.vy * dt;
+            item.x += item.vx * dt;
+            item.vx *= 0.95; // Drag
+
+            // Platform Collisions
+            let onGround = false;
+            for(let p of this.platforms) {
+                // Check if falling through top of platform
+                if (item.vy > 0 && 
+                    item.x + item.w/2 > p.x && item.x - item.w/2 < p.x + p.w &&
+                    item.y >= p.y && (item.y - item.vy*dt) <= p.y + 5) {
+                        item.y = p.y;
+                        item.vy = 0;
+                        item.vx *= 0.8; // Friction
+                        onGround = true;
+                }
+            }
+            
+            // Floor clamp (fallback)
+            if (item.y > this.height - 40) {
+                item.y = this.height - 40;
+                item.vy = 0;
+            }
+        });
+        
         // Respawn food occasionaly
-        if (this.items.filter(i => i.type==='carrot' && i.active).length < 2 && Math.random() < 0.01) {
-            this.spawnItem('carrot', Math.random()*1000 + 100, 100);
+        if (this.items.filter(i => i.type==='carrot' && i.active).length < 3 && Math.random() < 0.005) {
+            this.spawnItem('carrot', Math.random() * (this.width - 200) + 100, 50);
         }
     }
 }
@@ -172,21 +209,21 @@ export class Creature {
         this.bio.tick(dt);
         
         // Physics
-        this.vy += 0.8 * dt; // Gravity (Slightly stronger for snappier feel)
+        this.vy += 0.9 * dt; // Gravity
         this.x += this.vx * dt;
         this.y += this.vy * dt;
         
         // Drag
-        this.vx *= 0.9;
+        this.vx *= 0.85;
         
         // Collisions
         this.onGround = false;
         // Check platforms
         for(let p of world.platforms) {
             // Check falling down through top
-            if (this.vy > 0 && 
-                this.x + this.w/2 > p.x && this.x - this.w/2 < p.x + p.w &&
-                this.y >= p.y && (this.y - this.vy*dt) <= p.y + 5) { // +5 tolerance
+            if (this.vy >= 0 && 
+                this.x >= p.x && this.x <= p.x + p.w &&
+                this.y >= p.y && (this.y - this.vy*dt) <= p.y + 15) { // Increased tolerance for high speeds
                     this.y = p.y;
                     this.vy = 0;
                     this.onGround = true;
@@ -216,16 +253,31 @@ export class Creature {
         const action = actionMap[actionIdx];
         
         // Execute
-        const speed = 3.5;
-        if (action === 'left') { this.vx -= 1; if(this.onGround) this.vx = -speed; this.facing = -1; this.state = 'walk'; }
-        else if (action === 'right') { this.vx += 1; if(this.onGround) this.vx = speed; this.facing = 1; this.state = 'walk'; }
-        else if (action === 'jump' && this.onGround) { this.vy = -10; this.state = 'jump'; this.bio.chemicals[CHEMICALS.GLUCOSE] -= 5; }
+        const speed = 5.0; // Increased speed
+        if (action === 'left') { 
+            this.vx -= 1; 
+            if(this.onGround) this.vx = -speed; 
+            this.facing = -1; 
+            this.state = 'walk'; 
+        }
+        else if (action === 'right') { 
+            this.vx += 1; 
+            if(this.onGround) this.vx = speed; 
+            this.facing = 1; 
+            this.state = 'walk'; 
+        }
+        else if (action === 'jump' && this.onGround) { 
+            this.vy = -18; // Increased jump power to reach platforms
+            this.state = 'jump'; 
+            this.bio.chemicals[CHEMICALS.GLUCOSE] -= 5; 
+        }
         else if (action === 'eat') {
             this.state = 'eat';
+            this.vx *= 0.5; // Slow down when eating
             if (closestFood) {
                 closestFood.active = false;
                 this.bio.inject(CHEMICALS.GLUCOSE, 80);
-                this.bio.inject(CHEMICALS.REWARD, 60);
+                this.bio.inject(CHEMICALS.REWARD, 100); // Higher reward
             }
         } else if (action === 'sleep') {
             this.state = 'sleep';
