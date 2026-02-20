@@ -124,14 +124,15 @@ export class World {
         this.items = [];
         this.time = 0;
         
-        // Spawn
+        // Spawn Items (Smaller size)
         this.spawnItem('carrot', 300, 420);
         this.spawnItem('ball', 600, 320);
         this.spawnItem('carrot', 950, 370);
     }
 
     spawnItem(type, x, y) {
-        this.items.push({type, x, y, w:30, h:30, active:true});
+        // Reduced item hitbox to 20x20
+        this.items.push({type, x, y, w:20, h:20, active:true});
     }
 
     addCreature() {
@@ -155,8 +156,8 @@ export class Creature {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.w = 32; // Slightly reduced physics width to match smaller sprite
-        this.h = 40; // Slightly reduced physics height
+        this.w = 20; // Reduced width (visual scale 0.35)
+        this.h = 24; // Reduced height
         this.vx = 0;
         this.vy = 0;
         this.onGround = false;
@@ -171,7 +172,7 @@ export class Creature {
         this.bio.tick(dt);
         
         // Physics
-        this.vy += 0.6 * dt; // Gravity
+        this.vy += 0.8 * dt; // Gravity (Slightly stronger for snappier feel)
         this.x += this.vx * dt;
         this.y += this.vy * dt;
         
@@ -185,7 +186,7 @@ export class Creature {
             // Check falling down through top
             if (this.vy > 0 && 
                 this.x + this.w/2 > p.x && this.x - this.w/2 < p.x + p.w &&
-                this.y >= p.y && (this.y - this.vy*dt) <= p.y) {
+                this.y >= p.y && (this.y - this.vy*dt) <= p.y + 5) { // +5 tolerance
                     this.y = p.y;
                     this.vy = 0;
                     this.onGround = true;
@@ -200,9 +201,11 @@ export class Creature {
         const senses = { nearFood: false, nearWall: false };
         let closestFood = null;
         for(let i of world.items) {
-            if (i.active && i.type === 'carrot' && Math.abs(i.x - this.x) < 100) {
+            // Reduced sense distance for smaller world scale feel
+            if (i.active && i.type === 'carrot' && Math.abs(i.x - this.x) < 80) {
                 senses.nearFood = true;
-                if (Math.abs(i.x - this.x) < 40) closestFood = i;
+                // Interaction range reduced
+                if (Math.abs(i.x - this.x) < 25) closestFood = i;
             }
         }
         if (this.x < 50 || this.x > world.width-50) senses.nearWall = true;
@@ -213,10 +216,10 @@ export class Creature {
         const action = actionMap[actionIdx];
         
         // Execute
-        const speed = 4;
+        const speed = 3.5;
         if (action === 'left') { this.vx -= 1; if(this.onGround) this.vx = -speed; this.facing = -1; this.state = 'walk'; }
         else if (action === 'right') { this.vx += 1; if(this.onGround) this.vx = speed; this.facing = 1; this.state = 'walk'; }
-        else if (action === 'jump' && this.onGround) { this.vy = -12; this.state = 'jump'; this.bio.chemicals[CHEMICALS.GLUCOSE] -= 5; }
+        else if (action === 'jump' && this.onGround) { this.vy = -10; this.state = 'jump'; this.bio.chemicals[CHEMICALS.GLUCOSE] -= 5; }
         else if (action === 'eat') {
             this.state = 'eat';
             if (closestFood) {

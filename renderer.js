@@ -8,6 +8,10 @@ export class GameRenderer {
         this.sprites = new Map();
         this.textures = {};
         
+        // Define Visual Constants
+        this.NORN_SCALE = 0.35;
+        this.ITEM_SCALE = 0.25;
+        
         // Clean init
         this.app = new Application({
             background: '#1a1a1a',
@@ -21,28 +25,32 @@ export class GameRenderer {
         this.stage = this.app.stage;
         this.stage.sortableChildren = true;
         
-        this.bgLayer = new Container(); this.bgLayer.zIndex = 0;
-        this.gameLayer = new Container(); this.gameLayer.zIndex = 10;
-        this.gameLayer.sortableChildren = true; // Enable z-sorting within game layer
-        this.uiLayer = new Container(); this.uiLayer.zIndex = 20;
+        // Create Layers with explicit Z-index
+        this.bgLayer = new Container(); 
+        this.bgLayer.zIndex = 0;
+        
+        this.gameLayer = new Container(); 
+        this.gameLayer.zIndex = 10;
+        this.gameLayer.sortableChildren = true; // Critical for Z-sorting characters/items
+        
+        this.uiLayer = new Container(); 
+        this.uiLayer.zIndex = 20;
         
         this.stage.addChild(this.bgLayer, this.gameLayer, this.uiLayer);
         
+        // Platforms are drawn on gameLayer, zIndex 1
         this.platformGfx = new Graphics();
-        this.platformGfx.zIndex = 0; // Platforms at back of game layer
+        this.platformGfx.zIndex = 1; 
         this.gameLayer.addChild(this.platformGfx);
     }
 
     async init() {
-        // Load
+        // Load Assets
         const bgTex = await Assets.load('world_bg.png');
         const nornTex = await Assets.load('norn_sprite.png');
         const itemsTex = await Assets.load('items.png');
 
-        // Process Textures
-        // Norn: Assuming 4 frames walk (top row?), others elsewhere. 
-        // Based on previous code: 4x2 grid. 
-        // Walk: 0,0 - 1,0 - 2,0 - 3,0. Eat: 1,1. Sleep: 2,1. Idle: 0,1.
+        // Process Textures: Norn (4x2 grid)
         const nw = nornTex.width / 4;
         const nh = nornTex.height / 2;
         
@@ -73,6 +81,7 @@ export class GameRenderer {
 
         // Background
         this.bgSprite = new Sprite(bgTex);
+        this.bgSprite.zIndex = 0;
         this.bgLayer.addChild(this.bgSprite);
     }
 
@@ -99,16 +108,17 @@ export class GameRenderer {
         this.gameLayer.position.x = -camX;
         this.bgLayer.position.x = -camX * 0.5; // Parallax
         
-        // Update BG to cover visible area if needed (or just stretch)
-        // Here we stretch the BG image to the world size
+        // Adjust Background to cover world
+        // We stretch slightly to ensure coverage, but anchor is (0,0)
         this.bgSprite.width = this.worldWidth;
         this.bgSprite.height = this.worldHeight;
 
         // 3. Render Platforms
         this.platformGfx.clear();
-        this.platformGfx.beginFill(0x4a5d23);
+        this.platformGfx.beginFill(0x3a4d23);
+        this.platformGfx.lineStyle(2, 0x5a7d33);
         world.platforms.forEach(p => {
-            this.platformGfx.drawRoundedRect(p.x, p.y, p.w, p.h, 8);
+            this.platformGfx.drawRoundedRect(p.x, p.y, p.w, p.h, 4);
         });
         this.platformGfx.endFill();
 
@@ -126,8 +136,8 @@ export class GameRenderer {
             if (!spr) {
                 spr = new Sprite(this.textures.items[item.type]);
                 spr.anchor.set(0.5, 1);
-                spr.scale.set(0.6); // Reduced item scale
-                spr.zIndex = 5; // Ensure items are above platforms
+                spr.scale.set(this.ITEM_SCALE); // Small Scale
+                spr.zIndex = 5; 
                 this.gameLayer.addChild(spr);
                 this.sprites.set(item, spr);
             }
@@ -141,11 +151,11 @@ export class GameRenderer {
             if (!spr) {
                 spr = new AnimatedSprite(this.textures.norn.idle);
                 spr.anchor.set(0.5, 1);
-                spr.scale.set(0.8); // Reduced Norn scale
-                spr.zIndex = 10; // Ensure creature is on top of items/platforms
+                spr.scale.set(this.NORN_SCALE); // Small Scale
+                spr.zIndex = 20; // High Z-Index to ensure on top
                 spr.animationSpeed = 0.15;
                 spr.play();
-                spr.eventMode = 'static'; // Allow clicks
+                spr.eventMode = 'static';
                 spr.cursor = 'pointer';
                 spr.on('pointerdown', () => window.dispatchEvent(new CustomEvent('creature-select', {detail: c})));
                 this.gameLayer.addChild(spr);
@@ -162,7 +172,8 @@ export class GameRenderer {
 
             spr.x = c.x;
             spr.y = c.y;
-            spr.scale.x = c.facing * 0.8; // Flip with new scale
+            // Paper Mario Style Flip
+            spr.scale.x = c.facing * this.NORN_SCALE; 
         });
     }
 }
