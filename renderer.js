@@ -23,11 +23,13 @@ export class GameRenderer {
         
         this.bgLayer = new Container(); this.bgLayer.zIndex = 0;
         this.gameLayer = new Container(); this.gameLayer.zIndex = 10;
+        this.gameLayer.sortableChildren = true; // Enable z-sorting within game layer
         this.uiLayer = new Container(); this.uiLayer.zIndex = 20;
         
         this.stage.addChild(this.bgLayer, this.gameLayer, this.uiLayer);
         
         this.platformGfx = new Graphics();
+        this.platformGfx.zIndex = 0; // Platforms at back of game layer
         this.gameLayer.addChild(this.platformGfx);
     }
 
@@ -124,7 +126,8 @@ export class GameRenderer {
             if (!spr) {
                 spr = new Sprite(this.textures.items[item.type]);
                 spr.anchor.set(0.5, 1);
-                spr.scale.set(1.5); // Item scale
+                spr.scale.set(0.6); // Reduced item scale
+                spr.zIndex = 5; // Ensure items are above platforms
                 this.gameLayer.addChild(spr);
                 this.sprites.set(item, spr);
             }
@@ -138,7 +141,8 @@ export class GameRenderer {
             if (!spr) {
                 spr = new AnimatedSprite(this.textures.norn.idle);
                 spr.anchor.set(0.5, 1);
-                spr.scale.set(2.0); // Norn scale
+                spr.scale.set(0.8); // Reduced Norn scale
+                spr.zIndex = 10; // Ensure creature is on top of items/platforms
                 spr.animationSpeed = 0.15;
                 spr.play();
                 spr.eventMode = 'static'; // Allow clicks
@@ -158,7 +162,7 @@ export class GameRenderer {
 
             spr.x = c.x;
             spr.y = c.y;
-            spr.scale.x = c.facing * 2.0; // Flip
+            spr.scale.x = c.facing * 0.8; // Flip with new scale
         });
     }
 }

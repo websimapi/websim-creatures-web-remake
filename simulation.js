@@ -155,8 +155,8 @@ export class Creature {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.w = 40;
-        this.h = 50;
+        this.w = 32; // Slightly reduced physics width to match smaller sprite
+        this.h = 40; // Slightly reduced physics height
         this.vx = 0;
         this.vy = 0;
         this.onGround = false;

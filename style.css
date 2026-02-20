@@ -106,7 +106,7 @@ h3 { margin: 0 0 10px 0; font-size: 14px; color: #00aaff; border-bottom: 1px sol
     position: absolute;
     top: 60px;
     left: 10px;
-    background: rgba(0, 20, 30, 0.85);
+    background: rgba(0, 20, 30, 0.95);
     border: 1px solid #00aaff;
     border-radius: 6px;
     padding: 5px;
@@ -128,7 +128,7 @@ h3 { margin: 0 0 10px 0; font-size: 14px; color: #00aaff; border-bottom: 1px sol
 #brain-canvas {
     width: 220px;
     height: 140px;
-    background: rgba(0,0,0,0.5);
+    background: #000;
     border: 1px solid #222;
 }
 
