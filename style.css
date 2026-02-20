@@ -1,0 +1,154 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+}
+
+#game-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    touch-action: none;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#top-bar {
+    background: rgba(0, 20, 40, 0.8);
+    color: #fff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: auto;
+    border-bottom: 2px solid #00aaff;
+}
+
+.readout {
+    font-size: 14px;
+    display: flex;
+    gap: 15px;
+}
+
+.controls button {
+    background: #004466;
+    border: 1px solid #00aaff;
+    color: white;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.controls button.active {
+    background: #00aaff;
+    color: black;
+    font-weight: bold;
+}
+
+#science-kit {
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.85);
+    border: 2px solid #555;
+    border-radius: 8px;
+    width: 320px;
+    max-height: 250px;
+    margin: 10px;
+    align-self: flex-end; /* Desktop: top right */
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    color: #eee;
+    overflow: hidden;
+}
+
+.panel {
+    display: none;
+    padding: 10px;
+}
+.panel.active-panel {
+    display: block;
+}
+
+h3 { margin: 0 0 10px 0; font-size: 16px; color: #00aaff; border-bottom: 1px solid #333; padding-bottom: 5px; }
+
+.bar-container {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+.bar-bg {
+    width: 100%;
+    height: 6px;
+    background: #333;
+    margin-top: 2px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    transition: width 0.2s;
+}
+
+#brain-canvas {
+    width: 100%;
+    height: 150px;
+    background: #111;
+    border: 1px solid #333;
+}
+.brain-legend {
+    font-size: 10px;
+    display: flex;
+    justify-content: space-around;
+    margin-top: 5px;
+}
+
+#hand-controls {
+    pointer-events: auto;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+}
+
+.hand-btn {
+    background: rgba(255,255,255,0.9);
+    color: #000;
+    padding: 15px 30px;
+    border-radius: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: transform 0.1s;
+}
+.hand-btn:active {
+    transform: scale(0.95);
+}
+#hand-tick { border: 2px solid #4caf50; color: #2e7d32; }
+#hand-slap { border: 2px solid #f44336; color: #c62828; }
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+    #science-kit {
+        width: calc(100% - 20px);
+        top: 60px;
+        right: auto;
+        left: 10px;
+    }
+}

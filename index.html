@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Creatures: Web Remake</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "pixi.js": "https://esm.sh/pixi.js@8.1.0"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui-overlay">
+        <div id="top-bar">
+            <div class="readout">
+                <span id="creature-name">No Selection</span>
+                <span id="creature-state">State: Idle</span>
+            </div>
+            <div class="controls">
+                <button id="btn-health" class="active">Health</button>
+                <button id="btn-brain">Brain</button>
+                <button id="btn-reset">Hatch New</button>
+            </div>
+        </div>
+
+        <div id="science-kit">
+            <!-- Health Panel -->
+            <div id="panel-health" class="panel active-panel">
+                <h3>Biochemistry</h3>
+                <div class="bar-container">
+                    <label>Energy (Glucose)</label>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-glucose" style="width: 50%; background: #4caf50;"></div></div>
+                </div>
+                <div class="bar-container">
+                    <label>Pain</label>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-pain" style="width: 0%; background: #f44336;"></div></div>
+                </div>
+                <div class="bar-container">
+                    <label>Hunger Drive</label>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-hunger" style="width: 20%; background: #ff9800;"></div></div>
+                </div>
+                <div class="bar-container">
+                    <label>Boredom Drive</label>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-boredom" style="width: 10%; background: #2196f3;"></div></div>
+                </div>
+            </div>
+
+            <!-- Brain Panel -->
+            <div id="panel-brain" class="panel">
+                <h3>Neural Activity</h3>
+                <div id="brain-viz">
+                    <canvas id="brain-canvas" width="300" height="150"></canvas>
+                </div>
+                <div class="brain-legend">
+                    <span style="color:#00ff00">Perception</span>
+                    <span style="color:#ffff00">Concepts</span>
+                    <span style="color:#ff00ff">Decisions</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="hand-controls">
+            <div class="hand-btn" id="hand-tick" title="Reward (Tickle)">👋 Pat</div>
+            <div class="hand-btn" id="hand-slap" title="Punish (Slap)">💥 Slap</div>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
